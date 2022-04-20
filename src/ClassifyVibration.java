@@ -3,12 +3,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
+import java.io.FileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 
 import processing.core.PApplet;
 import processing.sound.AudioIn;
 import processing.sound.FFT;
 import processing.sound.Sound;
 import processing.sound.Waveform;
+import controlP5.*;
 
 /* A class with the main function and Processing visualizations to run the demo */
 
@@ -33,6 +37,20 @@ public class ClassifyVibration extends PApplet {
 	String[] classNames = {"quiet", "hand drill", "whistling", "class clapping"}; // ---------- EDIT WITH OUR CLASSES
 	int classIndex = 0;
 	int dataCount = 0;
+
+	// New Stuff --------------------------------------------------
+
+//	Map<String, MLClassifier> models = new HashMap<>();
+	List<String> models = new ArrayList<String>();
+
+	ControlP5 cp5;
+	
+	String selectedModel = null;
+	int col = color(255);
+
+	String mode = "Train";
+	
+	// --------------------------------------------------
 
 	MLClassifier classifier;
 	
@@ -80,8 +98,51 @@ public class ClassifyVibration extends PApplet {
 		  
 		/* patch the AudioIn */
 		fft.input(in);
-	}
 
+		
+		
+		cp5 = new ControlP5(this);
+		
+		// create a toggle and change the default look to a (on/off) switch look
+		cp5.addToggle("Train_Test")
+		.setPosition(20,20)
+		.setSize(50,20)
+		.setValue(true)
+		.setMode(ControlP5.SWITCH)
+		;
+		
+		
+		String cwd = System.getProperty("user.dir");
+		File dir = new File(cwd);
+		FileFilter fileFilter = new WildcardFileFilter("*.model");
+		File[] files = dir.listFiles(fileFilter);
+		
+		// list all available models
+		for (int i = 0; i < files.length; i++) {
+		   models.add(files[i].getName());
+		}
+		cp5.addScrollableList("models")
+	     .setPosition(800, 0)
+	     .setSize(200, 100)
+	     .setBarHeight(20)
+	     .setItemHeight(20)
+	     .addItems(models)
+	     ;
+		
+	}
+	
+	public void Train_Test(boolean theFlag) {
+		if(theFlag==true) {
+			col = color(255);
+			mode = "Train";
+			println(mode);
+		} else {
+			col = color(100);
+			mode = "Test";
+			println(mode);
+		}
+	}
+	
 	public void draw() {
 		background(0);
 		fill(0);
@@ -114,21 +175,44 @@ public class ClassifyVibration extends PApplet {
 		fill(255);
 		textSize(30);
 		text("TESTNUMBER: " + String.valueOf(testNumber), 200,30);
-		if(classifier != null) {
-			String guessedLabel = classifier.classify(captureInstance(null));
-			text("classified as: " + guessedLabel, 20, 30);
-			text("Current model: " + modelname_root, 20, 60);
+		if(mode.equals("Test")) {
+			text("Current model: " + selectedModel, 20, 80);
+			if (classifier != null) {
+				String guessedLabel = classifier.classify(captureInstance(null));
+				text("classified as: " + guessedLabel, 20, 110);
+			}
+			
 		}else {
-			text(classNames[classIndex], 20, 30);
+			text("Class: " + classNames[classIndex], 20, 80);
 			dataCount = trainingData.get(classNames[classIndex]).size();
-			text("Data collected: " + dataCount, 20, 60);
+			text("Data collected: " + dataCount, 20, 110);
+			text("Features: ", 20, 140);
+
 		}
 		
-		if(openMenu) {
-			fill(255,0,0,191);
-			rect(650, 100, 300, 400, 12);
-		}
+//		// button functionality
+//		fill(col);
+//		ellipse(120,90,40,40);
+		
+////		print which model is selected
+//		if(selectedModel != null) {
+//		    text("You have selected model: " + selectedModel, 100, 300);
+//		  }
 	}
+
+	public void models(int index) {
+		  selectedModel = (String) cp5.get(ScrollableList.class, "models").getItem(index).get("name");
+		  String cwd = System.getProperty("user.dir");
+		  try {
+			  // load selectedModel
+			  classifier = (MLClassifier) weka.core.SerializationHelper.read(cwd + "/"+ selectedModel);
+			  System.out.println("Loaded: " + selectedModel);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				System.out.println("Loading ERROR");
+				e.printStackTrace();
+			}
+		}
 	
 	public void keyPressed() {
 		if (key == '.') {
@@ -149,7 +233,8 @@ public class ClassifyVibration extends PApplet {
 			// Yang: add code to save your trained model for later use
 			try {
 				String cwd = System.getProperty("user.dir");
-				String fname;
+		        System.out.println(cwd);
+		        String fname;
 				File f = new File(cwd);
 
 		        String[] pathnames = f.list();
@@ -180,10 +265,12 @@ public class ClassifyVibration extends PApplet {
 		else if (key == 'l') {
 			// Yang: add code to load your previously trained model
 			
+			
 			// create options to toggle numbers
 			System.out.println("loading model: " + modelname_root);
 			try {
-				classifier = (MLClassifier) weka.core.SerializationHelper.read("demo.model");
+				String cwd = System.getProperty("user.dir");
+				classifier = (MLClassifier) weka.core.SerializationHelper.read(cwd + "/demo_1.model");
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				System.out.println("ERROR LOADING MODEL");
@@ -195,15 +282,6 @@ public class ClassifyVibration extends PApplet {
 			trainingData.get(classNames[classIndex]).add(captureInstance(classNames[classIndex]));
 		}
 		
-		else if (key == '`') {
-			// call settings here
-			// 1. draw box overlay
-			// --> activate menu
-			// 2. display text in box
-			openMenu = !openMenu;
-			
-		}
-
 		else if (keyCode == UP) {
 			testNumber++;
 		}
@@ -215,5 +293,6 @@ public class ClassifyVibration extends PApplet {
 		}
 			
 	}
+
 
 }
