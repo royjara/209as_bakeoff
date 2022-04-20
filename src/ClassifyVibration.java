@@ -12,6 +12,7 @@ import processing.sound.AudioIn;
 import processing.sound.FFT;
 import processing.sound.Sound;
 import processing.sound.Waveform;
+import processing.sound.Amplitude;
 import controlP5.*;
 
 /* A class with the main function and Processing visualizations to run the demo */
@@ -24,7 +25,15 @@ public class ClassifyVibration extends PApplet {
 	int testNumber = 0; // can then become current model state variable
 	
 	boolean openMenu = false;
+	
+	// noise gate
+	Amplitude amp;
+	float thresh = 0.1f;
+	float release = 20; // max gap size (# of samples) 
+	float releaseCounter = 0;
+	float currAmp;
 
+	boolean capture = false;
 	// END GLOBALS --------------------------------------------------
 
 	FFT fft;
@@ -75,7 +84,7 @@ public class ClassifyVibration extends PApplet {
 	}
 	
 	public void settings() {
-		size(1000, 550);
+		size(1200, 750);
 	}
 
 	public void setup() {
@@ -92,11 +101,13 @@ public class ClassifyVibration extends PApplet {
 		in = new AudioIn(this, 0);
 		waveform = new Waveform(this, nsamples);
 		waveform.input(in);
+		amp = new Amplitude(this);
 		
 		/* start the Audio Input */
 		in.start();
 		  
 		/* patch the AudioIn */
+		amp.input(in);
 		fft.input(in);
 
 		
@@ -144,14 +155,46 @@ public class ClassifyVibration extends PApplet {
 	}
 	
 	public void draw() {
-		background(0);
-		fill(0);
-		stroke(255);
+		background(39,46,41);
+		noFill();
 		
 		waveform.analyze();
+		
+		textSize(20);
+		currAmp = amp.analyze();
+		text("Amplitude: "+nf(currAmp,0,2),300,40);
+		text("fps: "+nf(frameRate,0,2),300,70);
+		text("[Left/Right] Gate thresh: " + nf(thresh,0,2), 300,100);
+		text("[Up/Down] Gate release (#samples): " + nf(release,0,2), 300,130);
+		
+		stroke(0,255,0);
+		strokeWeight(36);
+		fill(0,255,0,60);
+		// NOISE GATE
+		if(currAmp > thresh) {
+	        circle(800,300,100);
+//	        println("above threshold");
+	        // open gate
+	        releaseCounter = 0;
+	        capture = true;
+		}else if(currAmp < thresh && releaseCounter<release){
+	        // release on
+	        stroke(0,30,180);
+	        strokeWeight(36);  
+	        fill(0,30,180,60);
+	        circle(800,300,100);
+	        releaseCounter++;
+//	        println("release");
+	        capture = true;
+	    }else if(currAmp < thresh){
+//	      println("under thresh");
+	      capture = false;
+	    }
 
+		noFill();
+		stroke(253,255,135,150);
+		strokeWeight(6);
 		beginShape();
-		  
 		for(int i = 0; i < nsamples; i++)
 		{
 			vertex(
@@ -159,45 +202,41 @@ public class ClassifyVibration extends PApplet {
 					map(waveform.data[i], -1, 1, 0, height)
 					);
 		}
-		
 		endShape();
 
-		fft.analyze(spectrum);
+		if(capture) {
+			stroke(253,253,255,150);
+			noFill();
+			fft.analyze(spectrum);
+			for(int i = 0; i < bands; i++){
 
-		for(int i = 0; i < bands; i++){
-
-			/* the result of the FFT is normalized */
-			/* draw the line for frequency band i scaling it up by 40 to get more amplitude */
-			line( i, height, i, height - spectrum[i]*height*40);
-			fftFeatures[i] = spectrum[i];
-		} 
+				/* the result of the FFT is normalized */
+				/* draw the line for frequency band i scaling it up by 40 to get more amplitude */
+				line( i*width/bands, height, i*width/bands, height - spectrum[i]*height*40);
+				fftFeatures[i] = spectrum[i];
+			} 
+		}
 
 		fill(255);
-		textSize(30);
-		text("TESTNUMBER: " + String.valueOf(testNumber), 200,30);
+		textSize(20);
+
 		if(mode.equals("Test")) {
 			text("Current model: " + selectedModel, 20, 80);
 			if (classifier != null) {
 				String guessedLabel = classifier.classify(captureInstance(null));
 				text("classified as: " + guessedLabel, 20, 110);
+			}else {
+				text("no classifier", 20,110);
 			}
 			
 		}else {
-			text("Class: " + classNames[classIndex], 20, 80);
+			text("[.] Class: " + classNames[classIndex], 20, 80);
 			dataCount = trainingData.get(classNames[classIndex]).size();
-			text("Data collected: " + dataCount, 20, 110);
-			text("Features: ", 20, 140);
-
+			text("[spacebar] Data collected: " + dataCount, 20, 110);
+			text("[enter] Features: ", 20, 140);
 		}
 		
-//		// button functionality
-//		fill(col);
-//		ellipse(120,90,40,40);
-		
-////		print which model is selected
-//		if(selectedModel != null) {
-//		    text("You have selected model: " + selectedModel, 100, 300);
-//		  }
+
 	}
 
 	public void models(int index) {
@@ -278,15 +317,29 @@ public class ClassifyVibration extends PApplet {
 			}
 		}
 		
-		else if (key == ' ') {
+		else if (key == ' ' && capture) {
 			trainingData.get(classNames[classIndex]).add(captureInstance(classNames[classIndex]));
 		}
 		
 		else if (keyCode == UP) {
-			testNumber++;
+			if(release>=0 && release <200) {
+				release += 10;
+			}
 		}
 		else if (keyCode == DOWN) {
-			testNumber--;
+			if(release>0 && release <= 210) {
+				release -= 10;
+			}
+		}
+		else if (keyCode == LEFT) {
+			if(thresh>0.0f && thresh <= 1.1f) {
+				thresh -= 0.05f;
+			}
+		}
+		else if (keyCode == RIGHT) {
+			if(thresh>=-1.0f && thresh < 1.0f) {
+				thresh += 0.05f;
+			}
 		}
 		else if (keyCode == ENTER) {
 			
