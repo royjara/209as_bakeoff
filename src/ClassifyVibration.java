@@ -49,7 +49,6 @@ public class ClassifyVibration extends PApplet {
 
 	// New Stuff --------------------------------------------------
 
-//	Map<String, MLClassifier> models = new HashMap<>();
 	List<String> models = new ArrayList<String>();
 
 	ControlP5 cp5;
@@ -172,7 +171,7 @@ public class ClassifyVibration extends PApplet {
 		fill(0,255,0,60);
 		// NOISE GATE
 		if(currAmp > thresh) {
-	        circle(800,300,100);
+	        circle(1100,100,100);
 //	        println("above threshold");
 	        // open gate
 	        releaseCounter = 0;
@@ -182,7 +181,7 @@ public class ClassifyVibration extends PApplet {
 	        stroke(0,30,180);
 	        strokeWeight(36);  
 	        fill(0,30,180,60);
-	        circle(800,300,100);
+	        circle(1100,100,100);
 	        releaseCounter++;
 //	        println("release");
 	        capture = true;
@@ -225,6 +224,16 @@ public class ClassifyVibration extends PApplet {
 			if (classifier != null) {
 				String guessedLabel = classifier.classify(captureInstance(null));
 				text("classified as: " + guessedLabel, 20, 110);
+				if(guessedLabel.equals("Neutral")) {
+					fill(255,255,255,191);
+					rect(580, 500, 180, 200, 12);
+				} else if (guessedLabel.equals("Interaction 1")) {
+					fill(255,0,0,191);
+					rect(780, 500, 180, 200, 12);
+				}else if (guessedLabel.equals("Interaction 2")) {
+					fill(252, 232, 3,191);
+					rect(980, 500, 180, 200, 12);
+				}
 			}else {
 				text("no classifier", 20,110);
 			}
