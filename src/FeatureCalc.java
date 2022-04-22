@@ -1,18 +1,20 @@
-//import com.github.psambit9791.jdsp.signal.peaks.FindPeak;
-//import com.github.psambit9791.jdsp.signal.peaks.Peak;
+import com.github.psambit9791.jdsp.signal.peaks.FindPeak;
+import com.github.psambit9791.jdsp.signal.peaks.Peak;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.IntStream;
 
-public class FeatureCalc {
-    Instances dataset;
+public class FeatureCalc implements Serializable {
+    private static final long serialVersionUID = 1L;
+	Instances dataset;
     List<String> classLabels;
     int nfeatures;
-    int nPeaks = 10;
+    int nPeaks = 5;
     boolean isFirstInstance = true;
 
     public FeatureCalc(List<String> classLabels) {
@@ -32,19 +34,19 @@ public class FeatureCalc {
         return instance;
     }
 
-//    private int[] findPeaks(double[] measurements) {
-//        FindPeak fp = new FindPeak(measurements);
-//
-//        Peak out = fp.detectPeaks();
-//        Double[] heights = Arrays.stream(out.getHeights()).boxed().toArray(Double[]::new); //To get height of all peaks
-//
-//        int[] sortedPeaks = IntStream.range(0, heights.length)
-//            .boxed()
-//            .sorted(Comparator.comparing(i -> (heights[i])))
-//            .mapToInt(ele -> ele).toArray();
-//
-//        return Arrays.copyOfRange(sortedPeaks, 0, nPeaks);
-//    }
+    private int[] findPeaks(double[] measurements) {
+        FindPeak fp = new FindPeak(measurements);
+
+        Peak out = fp.detectPeaks();
+        Double[] heights = Arrays.stream(out.getHeights()).boxed().toArray(Double[]::new); //To get height of all peaks
+
+        int[] sortedPeaks = IntStream.range(0, heights.length)
+            .boxed()
+            .sorted(Comparator.comparing(i -> (heights[i])))
+            .mapToInt(ele -> ele).toArray();
+
+        return Arrays.copyOfRange(sortedPeaks, 0, nPeaks);
+    }
 
     private double[] getFreqRange(double[] measurements) {
         return new double[]{
@@ -103,12 +105,12 @@ public class FeatureCalc {
         nfeatures += measurements.length;
 
         // add top k peak frequency bins
-//        int[] peaks = findPeaks(measurements);
-//        for(int i = 0; i < nPeaks; i++){
-//            attrs.add(new Attribute("peak"+i, nfeatures+i));
-//            values.add((double) peaks[i]);
-//        }
-//        nfeatures += peaks.length;
+        int[] peaks = findPeaks(measurements);
+        for(int i = 0; i < nPeaks; i++){
+            attrs.add(new Attribute("peak"+i, nfeatures+i));
+            values.add((double) peaks[i]);
+        }
+        nfeatures += peaks.length;
 
         // add min/max frequencies
         double[] freqRange = getFreqRange(measurements);
@@ -166,11 +168,11 @@ public class FeatureCalc {
         startIdx += measurements.length;
 
         // add top k peak frequencies
-//        int[] peaks = findPeaks(measurements);
-//        for (int i = 0; i < nPeaks; i++){
-//            valueArray[startIdx+i] = peaks[i];
-//        }
-//        startIdx += peaks.length;
+        int[] peaks = findPeaks(measurements);
+        for (int i = 0; i < nPeaks; i++){
+            valueArray[startIdx+i] = peaks[i];
+        }
+        startIdx += peaks.length;
 
         // add min/max frequencies
         double[] freqRange = getFreqRange(measurements);
